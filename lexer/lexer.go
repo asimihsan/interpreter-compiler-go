@@ -119,8 +119,7 @@ func (l *Lexer) NextToken() token.Token {
 			tok.ColumnNumber = l.columnNumber
 			return tok
 		} else if isDigit(l.ch) {
-			tok.Type = token.INT
-			tok.Literal = l.readNumber()
+			tok = l.readNumber()
 			tok.LineNumber = l.lineNumber
 			tok.ColumnNumber = l.columnNumber
 			return tok
@@ -151,13 +150,33 @@ func isLetter(ch rune) bool {
 	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
 }
 
-func (l *Lexer) readNumber() string {
+func (l *Lexer) readNumber() token.Token {
+	var seenDot = false
 	var buf strings.Builder
-	for isDigit(l.ch) {
+	for {
+		if l.ch == '.' {
+			if seenDot {
+				return l.newToken(token.ILLEGAL, l.ch)
+			}
+			seenDot = true
+		} else if !isDigit(l.ch) {
+			break
+		}
 		buf.WriteRune(l.ch)
 		l.readChar()
 	}
-	return buf.String()
+	var tokenType token.TokenType
+	if seenDot {
+		tokenType = token.FLOAT
+	} else {
+		tokenType = token.INT
+	}
+	return token.Token{
+		Type:         tokenType,
+		Literal:      buf.String(),
+		LineNumber:   l.lineNumber,
+		ColumnNumber: l.columnNumber,
+	}
 }
 
 func isDigit(ch rune) bool {
